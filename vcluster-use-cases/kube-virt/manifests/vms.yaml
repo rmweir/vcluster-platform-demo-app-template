@@ -1,0 +1,487 @@
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: br0-bare-metal-1
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "br0-bare-metal-1",
+      "type": "bridge",
+      "bridge": "br0",
+      "isDefaultGateway": false,
+      "ipam": {}
+    }
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: br0-bare-metal-2
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "br0-bare-metal-2",
+      "type": "bridge",
+      "bridge": "br0",
+      "isDefaultGateway": false,
+      "ipam": {}
+    }
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: bare-metal-1
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  runStrategy: Halted
+  dataVolumeTemplates:
+    - metadata:
+        name: bare-metal-1-disk
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+        source:
+          blank: {}
+  template:
+    spec:
+      domain:
+        cpu:
+          cores: 2
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              macAddress: "02:00:00:00:00:01"
+              bridge: {}
+              bootOrder: 1
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: "2000m"
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: false
+      networks:
+        - name: default
+          multus:
+            networkName: br0-bare-metal-1
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: bare-metal-1-disk
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: bare-metal-2
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  runStrategy: Halted
+  dataVolumeTemplates:
+    - metadata:
+        name: bare-metal-2-disk
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+        source:
+          blank: {}
+  template:
+    spec:
+      domain:
+        cpu:
+          cores: 2
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              macAddress: "02:00:00:00:00:02"
+              bridge: {}
+              bootOrder: 1
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: "2000m"
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: false
+      networks:
+        - name: default
+          multus:
+            networkName: br0-bare-metal-2
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: bare-metal-2-disk
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bare-metal-1-bmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+stringData:
+  username: "admin"
+  password: "admin"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bare-metal-2-bmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+stringData:
+  username: "admin"
+  password: "admin"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bare-metal-1-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bare-metal-2-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bare-metal-1-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+rules:
+  - apiGroups: ["kubevirt.io"]
+    resources: ["virtualmachines"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["subresources.kubevirt.io"]
+    resources: ["virtualmachines/start", "virtualmachines/stop", "virtualmachines/restart"]
+    verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bare-metal-2-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+rules:
+  - apiGroups: ["kubevirt.io"]
+    resources: ["virtualmachines"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["subresources.kubevirt.io"]
+    resources: ["virtualmachines/start", "virtualmachines/stop", "virtualmachines/restart"]
+    verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bare-metal-1-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bare-metal-1-virtbmc
+subjects:
+  - kind: ServiceAccount
+    name: bare-metal-1-virtbmc
+    namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bare-metal-2-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bare-metal-2-virtbmc
+subjects:
+  - kind: ServiceAccount
+    name: bare-metal-2-virtbmc
+    namespace: default
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bare-metal-1-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    kubevirt.io/virtualmachinebmc-name: bare-metal-1
+    kubevirt.io/vm-name: bare-metal-1
+spec:
+  serviceName: bare-metal-1-virtbmc
+  replicas: 1
+  selector:
+    matchLabels:
+      kubevirt.io/virtualmachinebmc-name: bare-metal-1
+  template:
+    metadata:
+      labels:
+        kubevirt.io/virtualmachinebmc-name: bare-metal-1
+        kubevirt.io/vm-name: bare-metal-1
+    spec:
+      serviceAccountName: bare-metal-1-virtbmc
+      containers:
+        - name: virtbmc
+          image: ghcr.io/loft-sh/kubevirtbmc/virtbmc:v0.7.0-vcluster
+          args:
+            - --address
+            - 0.0.0.0
+            - --ipmi-port
+            - "10623"
+            - --redfish-port
+            - "10080"
+            - default
+            - bare-metal-1
+          env:
+            - name: BMC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bare-metal-1-bmc
+                  key: username
+            - name: BMC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bare-metal-1-bmc
+                  key: password
+          ports:
+            - containerPort: 10623
+              name: ipmi
+              protocol: UDP
+            - containerPort: 10080
+              name: redfish
+        - name: caddy
+          image: caddy:2
+          command:
+            - sh
+            - -c
+            - |
+              cat <<EOF > /tmp/Caddyfile
+              bare-metal-1-virtbmc.default.svc.cluster.local:443 {
+                  tls internal
+                  reverse_proxy localhost:10080
+              }
+              EOF
+              caddy run --config /tmp/Caddyfile
+          ports:
+            - containerPort: 443
+              name: https
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bare-metal-2-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    kubevirt.io/virtualmachinebmc-name: bare-metal-2
+    kubevirt.io/vm-name: bare-metal-2
+spec:
+  serviceName: bare-metal-2-virtbmc
+  replicas: 1
+  selector:
+    matchLabels:
+      kubevirt.io/virtualmachinebmc-name: bare-metal-2
+  template:
+    metadata:
+      labels:
+        kubevirt.io/virtualmachinebmc-name: bare-metal-2
+        kubevirt.io/vm-name: bare-metal-2
+    spec:
+      serviceAccountName: bare-metal-2-virtbmc
+      containers:
+        - name: virtbmc
+          image: ghcr.io/loft-sh/kubevirtbmc/virtbmc:v0.7.0-vcluster
+          args:
+            - --address
+            - 0.0.0.0
+            - --ipmi-port
+            - "10623"
+            - --redfish-port
+            - "10080"
+            - default
+            - bare-metal-2
+          env:
+            - name: BMC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bare-metal-2-bmc
+                  key: username
+            - name: BMC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bare-metal-2-bmc
+                  key: password
+          ports:
+            - containerPort: 10623
+              name: ipmi
+              protocol: UDP
+            - containerPort: 10080
+              name: redfish
+        - name: caddy
+          image: caddy:2
+          command:
+            - sh
+            - -c
+            - |
+              cat <<EOF > /tmp/Caddyfile
+              bare-metal-2-virtbmc.default.svc.cluster.local:443 {
+                  tls internal
+                  reverse_proxy localhost:10080
+              }
+              EOF
+              caddy run --config /tmp/Caddyfile
+          ports:
+            - containerPort: 443
+              name: https
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bare-metal-1-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    kubevirt.io/virtualmachinebmc-name: bare-metal-1
+    kubevirt.io/vm-name: bare-metal-1
+spec:
+  selector:
+    kubevirt.io/virtualmachinebmc-name: bare-metal-1
+  ports:
+    - name: ipmi
+      port: 623
+      protocol: UDP
+      targetPort: ipmi
+    - name: https
+      port: 443
+      targetPort: https
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bare-metal-2-virtbmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    kubevirt.io/virtualmachinebmc-name: bare-metal-2
+    kubevirt.io/vm-name: bare-metal-2
+spec:
+  selector:
+    kubevirt.io/virtualmachinebmc-name: bare-metal-2
+  ports:
+    - name: ipmi
+      port: 623
+      protocol: UDP
+      targetPort: ipmi
+    - name: https
+      port: 443
+      targetPort: https
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: bare-metal-1
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    metal3.vcluster.com/ip-address: 192.168.100.10/24
+    metal3.vcluster.com/dns-servers: "8.8.8.8"
+    metal3.vcluster.com/gateway: 192.168.100.1
+spec:
+  online: true
+  automatedCleaningMode: disabled
+  bootMACAddress: "02:00:00:00:00:01"
+  bmc:
+    address: redfish://bare-metal-1-virtbmc.default.svc.cluster.local:443
+    credentialsName: bare-metal-1-boot-bmc
+    disableCertificateVerification: true
+  rootDeviceHints:
+    deviceName: /dev/vda
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bare-metal-1-boot-bmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+stringData:
+  username: "admin"
+  password: "admin"
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: bare-metal-2
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    metal3.vcluster.com/ip-address: 192.168.100.11/24
+    metal3.vcluster.com/dns-servers: "8.8.8.8"
+    metal3.vcluster.com/gateway: 192.168.100.1
+spec:
+  online: true
+  automatedCleaningMode: disabled
+  bootMACAddress: "02:00:00:00:00:02"
+  bmc:
+    address: redfish://bare-metal-2-virtbmc.default.svc.cluster.local:443
+    credentialsName: bare-metal-2-boot-bmc
+    disableCertificateVerification: true
+  rootDeviceHints:
+    deviceName: /dev/vda
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bare-metal-2-boot-bmc
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+stringData:
+  username: "admin"
+  password: "admin"

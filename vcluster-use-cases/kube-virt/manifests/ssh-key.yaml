@@ -1,0 +1,8 @@
+apiVersion: storage.loft.sh/v1
+kind: SSHKey
+metadata:
+  name: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO69/4GInmog19kukjNVhmCSSY6OqYkXBRG6HDWbWi2i demo-key

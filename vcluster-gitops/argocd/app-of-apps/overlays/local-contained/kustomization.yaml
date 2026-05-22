@@ -30,6 +30,7 @@ resources:
   - ../../continuous-promotion-kargo-webhook-appset.yaml
   - ../../continuous-promotion-legacy-argo-kargo-appset.yaml
   - ../../vnode-with-vcluster-appset.yaml
+  - ../../kube-virt-appset.yaml
 patches:
   - path: patch-autosnapshots-appset.yaml
   - path: patch-continuous-promotion-flux-kargo-appset.yaml

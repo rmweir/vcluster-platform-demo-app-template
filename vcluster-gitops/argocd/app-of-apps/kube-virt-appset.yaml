@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kube-virt-cluster
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            kubeVirt: 'true'
+  template:
+    metadata:
+      name: kube-virt-apps
+      labels:
+        use-case.demos.vcluster.com: kube-virt
+    spec:
+      destination:
+        server: '{{server}}'
+        namespace: argocd
+      project: default
+      source:
+        repoURL: '{REPLACE_GIT_BASE_URL}/{REPLACE_ORG_NAME}/{REPLACE_REPO_NAME}'
+        targetRevision: '{REPLACE_GIT_TARGET_REVISION}'
+        path: vcluster-use-cases/kube-virt/apps
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - Replace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 20s
+            factor: 2
+            maxDuration: 3m

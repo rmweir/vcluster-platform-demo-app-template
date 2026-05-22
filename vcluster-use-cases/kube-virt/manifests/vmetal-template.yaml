@@ -1,0 +1,47 @@
+apiVersion: management.loft.sh/v1
+kind: VirtualClusterTemplate
+metadata:
+  name: vmetal-template
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  displayName: vMetal Template
+  description: Tenant cluster with a bare metal worker node provisioned via metal3 and KubeVirt.
+  owner:
+    team: loft-admins
+  template:
+    metadata: {}
+    instanceTemplate:
+      metadata: {}
+    pro:
+      enabled: true
+    helmRelease:
+      chart:
+        version: 0.33.1
+      values: |-
+        controlPlane:
+          backingStore:
+            etcd:
+              embedded:
+                enabled: true
+          statefulSet:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                cpu: 1
+                memory: 2Gi
+        privateNodes:
+          enabled: true
+          autoNodes:
+            - provider: metal3
+              static:
+                - name: bare-metal
+                  quantity: 1
+              properties:
+                vcluster.com/os-image: ubuntu2404-20260307
+    accessPoint:
+      ingress: {}
+    spaceTemplate:
+      metadata: {}

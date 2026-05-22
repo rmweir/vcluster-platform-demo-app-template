@@ -45,6 +45,7 @@ resolve-dns|resolveDNS
 tenant-observability|tenantObservability
 virtual-scheduler|virtualScheduler
 vnode|vnode
+kube-virt|kubeVirt
 EOF
 }
 
@@ -108,6 +109,9 @@ canonical_use_case_name() {
     vnode)
       printf '%s\n' "vnode"
       ;;
+    kube-virt|kubevirt|kubeVirt)
+      printf '%s\n' "kube-virt"
+      ;;
     *)
       return 1
       ;;
@@ -134,6 +138,7 @@ label_key_for_use_case() {
     tenant-observability) printf '%s\n' "tenantObservability" ;;
     virtual-scheduler) printf '%s\n' "virtualScheduler" ;;
     vnode) printf '%s\n' "vnode" ;;
+    kube-virt) printf '%s\n' "kubeVirt" ;;
     *)
       return 1
       ;;
@@ -353,6 +358,7 @@ Supported use cases for the vind cluster-local secret:
 - tenant-observability
 - virtual-scheduler
 - vnode
+- kube-virt
 
 Selection syntax:
 
